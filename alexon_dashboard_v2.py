@@ -34,58 +34,36 @@ st.markdown(f"""
     .block-container {{ max-width: 100% !important; padding: 1rem 2rem !important; }}
     @media (max-width: 767px) {{ .block-container {{ padding: 0.5rem 0.8rem !important; }} }}
 
-    body, .stApp {{ background-color: {DARK}; color: {TEXT_LIGHT}; }}
-    h1, h2, h3, h4, h5, h6, .stMarkdown, p, label, .stTextInput label, .stSelectbox label, .stDateInput label, .stNumberInput label {{ color: {TEXT_LIGHT} !important; }}
-    .st-emotion-cache-1c7y2kd {{ color: {TEXT_LIGHT} !important; }}
+    #root, .stApp, .main, div[data-testid="stAppViewContainer"] {{
+        background-color: {DARK} !important;
+    }}
+    div[data-testid="stAppViewContainer"] > .main {{
+        background-color: {DARK} !important;
+    }}
 
     .logo-section {{ display:flex; align-items:center; gap:16px; padding:12px 0; }}
     .logo-circle {{ width:70px; height:70px; min-width:70px; border-radius:50%; overflow:hidden; border:2px solid {GOLD}; background:#fff; }}
     .logo-circle img {{ width:100%; height:100%; object-fit:cover; }}
     .logo-text h1 {{ font-size:28px; font-weight:900; color:{GOLD}; letter-spacing:4px; text-transform:uppercase; margin:0; }}
-    .logo-text .sub {{ font-size:12px; color:{TEXT_MUTED}; letter-spacing:2px; }}
+    .logo-text .sub {{ font-size:12px; color:#ccc; letter-spacing:2px; }}
 
     .login-box {{ max-width:400px; margin:80px auto; padding:40px; background:{CARD_BG}; border-radius:12px; box-shadow:0 2px 20px rgba(0,0,0,0.5); text-align:center; border:1px solid {GOLD}; }}
     .login-box h2 {{ color:{GOLD} !important; }}
 
-    .stTextInput input, .stSelectbox div, .stDateInput input, .stNumberInput input {{
-        background-color: #2a2a2a !important; color: {TEXT_LIGHT} !important; border: 1px solid #444 !important; border-radius: 6px !important;
-    }}
-    .stTextInput input:focus, .stSelectbox div:focus, .stDateInput input:focus, .stNumberInput input:focus {{
-        border-color: {GOLD} !important; box-shadow: 0 0 0 1px {GOLD} !important;
-    }}
-    div[data-baseweb="select"] > div {{ background-color: #2a2a2a !important; color: {TEXT_LIGHT} !important; }}
-    div[data-baseweb="select"] ul {{ background-color: #2a2a2a !important; }}
-    div[data-baseweb="select"] li {{ color: {TEXT_LIGHT} !important; }}
-
     .stButton button {{
         width:100%; border-radius:8px !important; font-weight:600 !important;
-        background-color: {GOLD} !important; color: {DARK} !important; border: none !important;
+        background-color: {GOLD} !important; color: #000 !important; border: none !important;
     }}
     .stButton button:hover {{ background-color: #e5c04f !important; }}
-
-    .stMetric label, .stMetric .metric-label {{ color: {TEXT_MUTED} !important; }}
-    .stMetric .metric-value {{ color: {GOLD} !important; font-weight:700 !important; }}
-    .stMetric .metric-delta {{ font-weight:500 !important; }}
 
     div[data-testid="stSidebar"] {{
         background-color: #111 !important; border-right: 1px solid {GOLD} !important;
     }}
-    div[data-testid="stSidebar"] .stMarkdown {{ color: {TEXT_LIGHT} !important; }}
-    div[data-testid="stSidebar"] .stRadio div {{ color: {TEXT_LIGHT} !important; }}
-    div[data-testid="stSidebar"] .stRadio label:hover {{ color: {GOLD} !important; }}
     div[data-testid="stSidebarNav"] {{ display:none !important; }}
 
-    .stDataFrame {{ background-color: #1a1a1a !important; }}
-    .stDataFrame table {{ color: {TEXT_LIGHT} !important; }}
     .stDataFrame thead tr th {{ background-color: {BLUE} !important; color: {GOLD} !important; }}
-    .stDataFrame tbody tr td {{ background-color: #1a1a1a !important; border-bottom:1px solid #333 !important; }}
 
-    .stTabs [data-baseweb="tab-list"] {{ background-color: #1a1a1a !important; }}
-    .stTabs [data-baseweb="tab"] {{ color: {TEXT_MUTED} !important; }}
     .stTabs [aria-selected="true"] {{ color: {GOLD} !important; border-bottom-color: {GOLD} !important; }}
-
-    div[role="alert"] {{ background-color: #2a1a1a !important; color: #ff6b6b !important; border:1px solid #ff4444 !important; }}
-    .stAlert {{ background-color: #1a2a1a !important; color: #6bff6b !important; border:1px solid #44ff44 !important; }}
 
     hr {{ border-color: #333 !important; }}
 </style>

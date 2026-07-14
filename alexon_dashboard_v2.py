@@ -11,12 +11,25 @@ st.set_page_config(page_title="Alexon Group M&E", layout="centered")
 logo_b64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAYGBgYHBgcICAcKCwoLCg8ODAwODxYQERAREBYiFRkVFRkVIh4kHhweJB42KiYmKjY+NDI0PkxERExfWl98fKcBBgYGBgcGBwgIBwoLCgsKDw4MDA4PFhAREBEQFiIVGRUVGRUiHiQeHB4kHjYqJiYqNj40MjQ+TERETF9aX3x8pP/CABEIA8AD6AMBIgACEQEDEQH/xAAZAAEBAQEBAQAAAAAAAAAAAAAAAQIDBAX/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/aAAwDAQACEAMQAAAB+V9AAAAAAAAAAAAAAAM5AAAAAAAzQAADNAAAAAAAADNAAAAAAAAM0AAAAAAAM0AAAAAAAM0AAAAAAAzQAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAAAAAAAAA//EABQRAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQIQAAAAAoAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAACQ/9oACAECEAAAAH//xAAC/9sACwABAAMBAQEBAAAAAAAAAQAQMTBBUWFxgZGhscHR/9oACAEBAAE/EDDZz7zfbOy9XnavPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeP/xAAiEQEBAQACAwACAwEAAAAAAAAAAREQMSBQIGFxUEGQobH/2gAIAQIBAT8Q/wD/2gAIAQMBAT8Q/wD/2Q=="
 
 st.markdown(f"""
-    <div style="text-align:center;padding:10px 0">
-        <img src="{logo_b64}" style="max-width:220px">
+    <div style="text-align:center;padding:15px 0 5px">
+        <div style="
+            width:100px;height:100px;border-radius:50%;
+            overflow:hidden;margin:0 auto;
+            border:3px solid #2d6a4f;box-shadow:0 2px 10px rgba(0,0,0,0.15);
+            display:flex;align-items:center;justify-content:center;
+            background:#fff;
+        ">
+            <img src="{logo_b64}" style="width:100%;height:100%;object-fit:cover">
+        </div>
+        <div style="
+            font-size:28px;font-weight:800;color:#1a3a5c;
+            letter-spacing:4px;margin-top:6px;text-transform:uppercase;
+        ">ALEXON</div>
+        <div style="font-size:13px;color:#666;letter-spacing:2px">Group</div>
     </div>
 """, unsafe_allow_html=True)
 
-st.title("🏗️ Alexon Group - M&E Dashboard")
+st.title("🏗️ M&E Dashboard")
 
 # ── Database ────────────────────────────────────────────────
 DB = Path(__file__).parent / "alexon_data.db"

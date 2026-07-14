@@ -1,10 +1,21 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+import base64
 
 st.set_page_config(page_title="Alexon Group M&E", layout="centered")
+
+# ── Logo (inline base64) ────────────────────────────────────
+logo_b64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAYGBgYHBgcICAcKCwoLCg8ODAwODxYQERAREBYiFRkVFRkVIh4kHhweJB42KiYmKjY+NDI0PkxERExfWl98fKcBBgYGBgcGBwgIBwoLCgsKDw4MDA4PFhAREBEQFiIVGRUVGRUiHiQeHB4kHjYqJiYqNj40MjQ+TERETF9aX3x8pP/CABEIA8AD6AMBIgACEQEDEQH/xAAZAAEBAQEBAQAAAAAAAAAAAAAAAQIDBAX/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/aAAwDAQACEAMQAAAB+V9AAAAAAAAAAAAAAAM5AAAAAAAzQAADNAAAAAAAADNAAAAAAAAM0AAAAAAAM0AAAAAAAM0AAAAAAAzQAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAADNAAAAAAAAzQAAAAAAAAAAAAA//EABQRAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQIQAAAAAoAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAACQ/9oACAECEAAAAH//xAAC/9sACwABAAMBAQEBAAAAAAAAAQAQMTBBUWFxgZGhscHR/9oACAEBAAE/EDDZz7zfbOy9XnavPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeOXnarPF3+eueAceWeBHLzgcnOjvbSndc4nLzgeP/xAAiEQEBAQACAwACAwEAAAAAAAAAAREQMSBQIGFxUEGQobH/2gAIAQIBAT8Q/wD/2gAIAQMBAT8Q/wD/2Q=="
+
+st.markdown(f"""
+    <div style="text-align:center;padding:10px 0">
+        <img src="{logo_b64}" style="max-width:220px">
+    </div>
+""", unsafe_allow_html=True)
+
 st.title("🏗️ Alexon Group - M&E Dashboard")
 
 # ── Database ────────────────────────────────────────────────
@@ -40,6 +51,8 @@ PRICES = {
     "Roller 20T": 100000, "Water Bowser 10000L": 75000, "Tipper Lorry 10T": 65000,
 }
 
+PERFORMANCE_ORDER = ["Top Performer", "Good", "Average", "Low", "Very Low"]
+
 # ── Helpers ─────────────────────────────────────────────────
 def add(d, s, i, p, q):
     r = q * PRICES[i]
@@ -51,7 +64,27 @@ def add(d, s, i, p, q):
 def load():
     return pd.read_sql_query("SELECT rowid as id,* FROM e ORDER BY d DESC", conn())
 
-# ── Tabs (always visible on mobile) ─────────────────────────
+def performance_color(val, reverse=False):
+    """Color bands: green -> yellow -> orange -> red"""
+    if reverse:
+        if val >= 80: return "#1a7a2e"
+        if val >= 50: return "#2d8f1a"
+        if val >= 30: return "#b8860b"
+        if val >= 15: return "#cc5500"
+        return "#cc0000"
+    else:
+        if val >= 80: return "#1a7a2e"
+        if val >= 50: return "#2d8f1a"
+        if val >= 30: return "#b8860b"
+        if val >= 15: return "#cc5500"
+        return "#cc0000"
+
+def style_performance_row(row, max_val, col, reverse=False):
+    pct = (row[col] / max_val * 100) if max_val > 0 else 0
+    bg = performance_color(pct, reverse)
+    return [f"background: {bg}; color: white; font-weight: bold" if c == col else "" for c in row.index]
+
+# ── Tabs ─────────────────────────────────────────────────────
 tab1, tab2 = st.tabs(["📊 Dashboard", "📝 Daily Entries"])
 
 with tab2:
@@ -95,19 +128,65 @@ with tab1:
         kpi2.metric("📦 Items Sold", f"{df['q'].sum():,}")
         kpi3.metric("🏭 Produced", f"{df['p'].sum():,}")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Sales by Product")
-            st.bar_chart(df.groupby("i")["r"].sum())
-        with col2:
-            st.subheader("Sales by Site")
-            st.bar_chart(df.groupby("s")["r"].sum())
+        # ── Sales by Product (color ranked) ──
+        st.subheader("📈 Sales by Product — Performance Ranking")
+        prod_sales = df.groupby("i")["q"].sum().reset_index().sort_values("q", ascending=False)
+        prod_sales.columns = ["Product", "Qty Sold"]
+        max_q = prod_sales["Qty Sold"].max()
+        styled_prod = prod_sales.style.apply(
+            lambda row: style_performance_row(row, max_q, "Qty Sold"), axis=1
+        )
+        st.dataframe(styled_prod, use_container_width=True, hide_index=True)
 
+        # Bar chart
+        st.bar_chart(df.groupby("i")["r"].sum())
+
+        # ── Sales by Site (color ranked) ──
+        st.subheader("📈 Sales by Site — Performance Ranking")
+        site_sales = df.groupby("s")["q"].sum().reset_index().sort_values("q", ascending=False)
+        site_sales.columns = ["Site", "Qty Sold"]
+        max_site = site_sales["Qty Sold"].max() if not site_sales.empty else 1
+        styled_site = site_sales.style.apply(
+            lambda row: style_performance_row(row, max_site, "Qty Sold"), axis=1
+        )
+        st.dataframe(styled_site, use_container_width=True, hide_index=True)
+
+        st.bar_chart(df.groupby("s")["r"].sum())
+
+        # ── Time-based: Daily / Weekly / Monthly ──
+        st.subheader("📅 Time-Based Performance")
+        time_col, time_range = st.columns([1, 2])
+        period = time_col.radio("Period", ["Daily", "Weekly", "Monthly"], horizontal=True, label_visibility="collapsed")
+
+        df_time = df.copy()
+        df_time["d"] = pd.to_datetime(df_time["d"])
+
+        if period == "Daily":
+            perf = df_time.groupby("d")["q"].sum().reset_index()
+            perf.columns = ["Date", "Qty Sold"]
+        elif period == "Weekly":
+            df_time["week"] = df_time["d"].dt.isocalendar().week.astype(str) + "-" + df_time["d"].dt.year.astype(str)
+            perf = df_time.groupby("week")["q"].sum().reset_index()
+            perf.columns = ["Week", "Qty Sold"]
+        else:
+            df_time["month"] = df_time["d"].dt.month_name() + " " + df_time["d"].dt.year.astype(str)
+            perf = df_time.groupby("month")["q"].sum().reset_index()
+            perf.columns = ["Month", "Qty Sold"]
+
+        max_t = perf["Qty Sold"].max() if not perf.empty else 1
+        styled_time = perf.style.apply(
+            lambda row: style_performance_row(row, max_t, "Qty Sold"), axis=1
+        )
+        st.dataframe(styled_time, use_container_width=True, hide_index=True)
+
+        st.caption("🟢 Green = Top Performer  🟡 Yellow/Orange = Average  🔴 Red = Low / Very Low")
+
+        # ── Stock Alert ──
         st.subheader("Stock Alert")
         stock = df.groupby("i")[["p", "q"]].sum()
         stock["Balance"] = stock["p"] - stock["q"]
         def color(v):
-            return ["background: #ffcccc" if x < 100 else "" for x in v]
+            return ["background: #ffcccc" if x < 100 else "background: #ccffcc" for x in v]
         st.dataframe(stock.style.apply(color, axis=1), use_container_width=True)
     else:
         st.info("Go to Daily Entries tab and add some data")

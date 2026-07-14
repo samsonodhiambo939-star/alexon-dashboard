@@ -329,9 +329,9 @@ if selection == "📊 Dashboard":
         if not prod_perf.empty:
             min_r = prod_perf["Revenue"].min()
             max_r = prod_perf["Revenue"].max()
-            styled_prod = prod_perf.style.applymap(
+            styled_prod = prod_perf.style.map(
                 lambda v: performance_band(v, min_r, max_r), subset=["Revenue"]
-            ).applymap(
+            ).map(
                 lambda v: performance_band(v, prod_perf["Sold"].min(), prod_perf["Sold"].max()), subset=["Sold"]
             )
             st.dataframe(styled_prod, use_container_width=True)
@@ -348,9 +348,9 @@ if selection == "📊 Dashboard":
         if not site_perf.empty:
             min_s = site_perf["Revenue"].min()
             max_s = site_perf["Revenue"].max()
-            styled_site = site_perf.style.applymap(
+            styled_site = site_perf.style.map(
                 lambda v: performance_band(v, min_s, max_s), subset=["Revenue"]
-            ).applymap(
+            ).map(
                 lambda v: performance_band(v, site_perf["Sold"].min(), site_perf["Sold"].max()), subset=["Sold"]
             )
             st.dataframe(styled_site, use_container_width=True)

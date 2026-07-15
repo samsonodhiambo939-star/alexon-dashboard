@@ -197,6 +197,19 @@ def init_db():
             user_id INTEGER,
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS pending_edits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name TEXT NOT NULL,
+            record_id INTEGER NOT NULL,
+            old_data TEXT NOT NULL,
+            new_data TEXT NOT NULL,
+            edited_by INTEGER NOT NULL,
+            edited_at TEXT DEFAULT (datetime('now')),
+            status TEXT DEFAULT 'pending',
+            admin_notes TEXT DEFAULT '',
+            approved_by INTEGER,
+            approved_at TEXT
+        );
     """)
     c.commit()
     admin = c.execute("SELECT id FROM users WHERE username='admin'").fetchone()
@@ -276,15 +289,20 @@ role = user["role"]
 site = user["site"]
 username = user["username"]
 
+for k in ["edit_entry", "edit_expense", "edit_debtor", "edit_hire"]:
+    if k not in st.session_state: st.session_state[k] = None
+
 # ── Sidebar ─────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"**👤 {username}** ({role.upper()})")
     st.markdown(f"📍 Site: {site if site else 'All'}")
     st.divider()
 
+    pc = pending_count()
+    pending_label = f"⏳ Pending ({pc})" if pc else "⏳ Pending"
     menu_items = []
     if role == "admin":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "👥 Users", "📁 All Data"]
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", pending_label, "👥 Users", "📁 All Data"]
     elif role == "manager":
         menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
     else:
@@ -313,6 +331,32 @@ def get_sites():
     if role == "clerk":
         return [site]
     return ["Ugunja", "Siaya", "Bondo"]
+
+def submit_edit(table_name, record_id, old_data, new_data, user_id):
+    c = conn()
+    c.execute("INSERT INTO pending_edits (table_name, record_id, old_data, new_data, edited_by) VALUES (?,?,?,?,?)",
+              (table_name, record_id, json.dumps(old_data), json.dumps(new_data), user_id))
+    c.commit(); c.close()
+
+def approve_edit(edit_id, admin_id):
+    c = conn()
+    edit = c.execute("SELECT * FROM pending_edits WHERE id=?", (edit_id,)).fetchone()
+    if not edit or edit[6] != 'pending': return False
+    new_data = json.loads(edit[4])
+    table = edit[1]; rid = edit[2]
+    set_clause = ", ".join([f"{k}=?" for k in new_data.keys()])
+    vals = list(new_data.values()) + [rid]
+    c.execute(f"UPDATE {table} SET {set_clause} WHERE id=?", vals)
+    c.execute("UPDATE pending_edits SET status='approved', approved_by=?, approved_at=datetime('now') WHERE id=?", (admin_id, edit_id))
+    c.commit(); c.close(); return True
+
+def reject_edit(edit_id, admin_id):
+    c = conn()
+    c.execute("UPDATE pending_edits SET status='rejected', approved_by=?, approved_at=datetime('now') WHERE id=?", (admin_id, edit_id))
+    c.commit(); c.close()
+
+def pending_count():
+    return conn().execute("SELECT COUNT(*) FROM pending_edits WHERE status='pending'").fetchone()[0]
 
 def rank_color(val, is_max, is_min):
     """Green=best, yellow=good, orange=ok, red=worst"""
@@ -454,10 +498,39 @@ elif selection == "📝 Daily Entry":
     st.divider()
     st.subheader("Entry History")
     sf = f"site='{site}'" if role == "clerk" else "1=1"
-    df = load_query(f"SELECT entry_date as Date, site as Site, item as Item, produced as Prod, sold as Sold, wastage as Waste, revenue as Rev FROM entries WHERE {sf} ORDER BY entry_date DESC LIMIT 50")
-    if not df.empty:
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        csv = df.to_csv(index=False).encode()
+    entries_raw = load_query(f"SELECT id, entry_date as Date, site as Site, item as Item, produced as Prod, sold as Sold, wastage as Waste, revenue as Rev FROM entries WHERE {sf} ORDER BY entry_date DESC LIMIT 50")
+    if not entries_raw.empty:
+        for _, row in entries_raw.iterrows():
+            c1, c2, c3 = st.columns([6, 1, 1])
+            c1.markdown(f"**{row['Date']}** · {row['Site']} · {row['Item']} — Prod: {row['Prod']}, Sold: {row['Sold']}, Rev: Ksh {row['Rev']:,.0f}")
+            if c2.button("✏️", key=f"ee_{row['id']}"):
+                st.session_state.edit_entry = row['id']
+            if c3.button("🗑️", key=f"de_{row['id']}"):
+                conn().execute("DELETE FROM entries WHERE id=?", (row['id'],)).connection.commit()
+                st.rerun()
+
+        if st.session_state.get("edit_entry"):
+            rid = st.session_state.edit_entry
+            orig = load_query(f"SELECT * FROM entries WHERE id={rid}").iloc[0].to_dict()
+            with st.form("edit_entry_form"):
+                st.markdown(f"**Editing entry #{rid}**")
+                col1, col2 = st.columns(2)
+                d = col1.date_input("Date", date.fromisoformat(orig['entry_date']))
+                s = col2.selectbox("Site", get_sites(), index=["Ugunja","Siaya","Bondo"].index(orig['site']) if orig['site'] in ["Ugunja","Siaya","Bondo"] else 0)
+                i = st.selectbox("Product", list(PRICES.keys()), index=list(PRICES.keys()).index(orig['item']) if orig['item'] in PRICES else 0)
+                col3, col4, col5 = st.columns(3)
+                p = col3.number_input("Produced", 0, value=int(orig['produced']))
+                q = col4.number_input("Sold", 0, value=int(orig['sold']))
+                w = col5.number_input("Wastage", 0, value=int(orig['wastage']))
+                c6, c7 = st.columns(2)
+                new_data = {"entry_date": d.isoformat(), "site": s, "item": i, "produced": p, "sold": q, "wastage": w, "revenue": q * PRICES[i]}
+                if c6.form_submit_button("💾 Submit Edit (Pending Approval)"):
+                    submit_edit("entries", rid, {k: orig[k] for k in new_data}, new_data, user["id"])
+                    st.session_state.edit_entry = None; st.rerun()
+                if c7.form_submit_button("❌ Cancel"):
+                    st.session_state.edit_entry = None; st.rerun()
+
+        csv = entries_raw.drop(columns=['id']).to_csv(index=False).encode()
         st.download_button("📥 Download CSV", csv, "Alexon_Entries.csv", "text/csv")
 
 # ── EXPENSES ────────────────────────────────────────────────
@@ -484,10 +557,38 @@ elif selection == "💰 Expenses":
     st.divider()
     st.subheader("Expense Summary")
     sf = site_filter()
-    exp_df = load_query(f"SELECT * FROM expenses WHERE {sf} ORDER BY expense_date DESC LIMIT 50")
-    if not exp_df.empty:
-        st.dataframe(exp_df[["expense_date", "site", "category", "amount", "description"]], use_container_width=True, hide_index=True)
-        st.metric("Total Expenses", f"Ksh {exp_df['amount'].sum():,.0f}")
+    expenses_raw = load_query(f"SELECT * FROM expenses WHERE {sf} ORDER BY expense_date DESC LIMIT 50")
+    if not expenses_raw.empty:
+        for _, row in expenses_raw.iterrows():
+            c1, c2, c3 = st.columns([5, 1, 1])
+            c1.markdown(f"**{row['expense_date']}** · {row['site']} · {row['category']} — Ksh {row['amount']:,.0f}")
+            if c2.button("✏️", key=f"exe_{row['id']}"):
+                st.session_state.edit_expense = row['id']
+            if c3.button("🗑️", key=f"dxe_{row['id']}"):
+                conn().execute("DELETE FROM expenses WHERE id=?", (row['id'],)).connection.commit()
+                st.rerun()
+
+        if st.session_state.get("edit_expense"):
+            rid = st.session_state.edit_expense
+            orig = expenses_raw[expenses_raw['id'] == rid].iloc[0].to_dict()
+            with st.form("edit_expense_form"):
+                st.markdown(f"**Editing expense #{rid}**")
+                col1, col2 = st.columns(2)
+                d = col1.date_input("Date", date.fromisoformat(orig['expense_date']))
+                s = col2.selectbox("Site", get_sites(), index=["Ugunja","Siaya","Bondo"].index(orig['site']) if orig['site'] in ["Ugunja","Siaya","Bondo"] else 0)
+                cat = st.selectbox("Category", ["Fuel","Labor","Repairs","Transport","Materials","Other"], index=["Fuel","Labor","Repairs","Transport","Materials","Other"].index(orig['category']) if orig['category'] in ["Fuel","Labor","Repairs","Transport","Materials","Other"] else 0)
+                col3, col4 = st.columns(2)
+                amt = col3.number_input("Amount", 0.0, value=float(orig['amount']))
+                desc = col4.text_input("Description", value=orig['description'])
+                c5, c6 = st.columns(2)
+                new_data = {"expense_date": d.isoformat(), "site": s, "category": cat, "amount": amt, "description": desc}
+                if c5.form_submit_button("💾 Submit Edit"):
+                    submit_edit("expenses", rid, {k: orig[k] for k in new_data}, new_data, user["id"])
+                    st.session_state.edit_expense = None; st.rerun()
+                if c6.form_submit_button("❌ Cancel"):
+                    st.session_state.edit_expense = None; st.rerun()
+
+        st.metric("Total Expenses", f"Ksh {expenses_raw['amount'].sum():,.0f}")
 
 # ── EQUIPMENT HIRE ─────────────────────────────────────────
 elif selection == "🔧 Equipment Hire":
@@ -546,14 +647,48 @@ elif selection == "🔧 Equipment Hire":
 
     with tab_history:
         sf = site_filter()
-        hires = load_query(f"SELECT customer as Customer, phone as Phone, equipment as Equipment, daily_rate as Rate, start_date as 'Start', end_date as 'End', days as Days, total_cost as Total, paid as Paid, balance as Balance, CASE WHEN returned THEN '✅ Returned' ELSE '❌ Out' END as Status FROM hires WHERE {sf} ORDER BY start_date DESC")
-        if not hires.empty:
-            st.dataframe(hires, use_container_width=True, hide_index=True)
-            csv = hires.to_csv(index=False).encode()
+        hires_raw = load_query(f"SELECT id, customer, phone, equipment, daily_rate, start_date, end_date, days, total_cost, paid, balance, returned FROM hires WHERE {sf} ORDER BY start_date DESC")
+        if not hires_raw.empty:
+            for _, row in hires_raw.iterrows():
+                status = "✅ Returned" if row['returned'] else "❌ Out"
+                c1, c2, c3 = st.columns([5, 1, 1])
+                c1.markdown(f"**{row['customer']}** · {row['equipment']} · Ksh {row['balance']:,.0f} · {status}")
+                if c2.button("✏️", key=f"eh_{row['id']}"):
+                    st.session_state.edit_hire = row['id']
+                if c3.button("🗑️", key=f"dh_{row['id']}"):
+                    conn().execute("DELETE FROM hires WHERE id=?", (row['id'],)).connection.commit()
+                    st.rerun()
+
+            if st.session_state.get("edit_hire"):
+                rid = st.session_state.edit_hire
+                orig = hires_raw[hires_raw['id'] == rid].iloc[0].to_dict()
+                with st.form("edit_hire_form"):
+                    st.markdown(f"**Editing hire #{rid}**")
+                    col1, col2 = st.columns(2)
+                    customer = col1.text_input("Customer", value=orig['customer'])
+                    phone = col2.text_input("Phone", value=orig['phone'])
+                    col3, col4 = st.columns(2)
+                    equip = col3.selectbox("Equipment", EQUIPMENT_ITEMS, index=EQUIPMENT_ITEMS.index(orig['equipment']) if orig['equipment'] in EQUIPMENT_ITEMS else 0)
+                    s = col4.selectbox("Site", get_sites(), index=["Ugunja","Siaya","Bondo"].index(orig['site']) if orig['site'] in ["Ugunja","Siaya","Bondo"] else 0)
+                    col5, col6 = st.columns(2)
+                    sdate = col5.date_input("Start", date.fromisoformat(orig['start_date']))
+                    edate = col6.date_input("End", date.fromisoformat(orig['end_date']))
+                    days = max(1, (edate - sdate).days)
+                    rate = PRICES[equip]
+                    total = days * rate
+                    col7, col8 = st.columns(2)
+                    paid = col7.number_input("Paid", 0.0, value=float(orig['paid']))
+                    returned = col8.checkbox("Returned", value=bool(orig['returned']))
+                    c9, c10 = st.columns(2)
+                    new_data = {"customer": customer, "phone": phone, "equipment": equip, "daily_rate": rate, "start_date": sdate.isoformat(), "end_date": edate.isoformat(), "days": days, "total_cost": total, "paid": paid, "balance": total - paid, "returned": 1 if returned else 0, "site": s}
+                    if c9.form_submit_button("💾 Submit Edit"):
+                        submit_edit("hires", rid, {k: orig[k] for k in new_data}, new_data, user["id"])
+                        st.session_state.edit_hire = None; st.rerun()
+                    if c10.form_submit_button("❌ Cancel"):
+                        st.session_state.edit_hire = None; st.rerun()
+
+            csv = hires_raw.drop(columns=['id']).to_csv(index=False).encode()
             st.download_button("📥 Download Hires", csv, "Alexon_Hires.csv", "text/csv")
-            total_hire_debt = hires[pd.to_numeric(hires['Balance'], errors='coerce') > 0]['Balance'].sum() if 'Balance' in hires.columns else 0
-            if total_hire_debt > 0:
-                st.metric("Total Outstanding from Hires", f"Ksh {total_hire_debt:,.0f}")
 
 # ── DEBTORS ─────────────────────────────────────────────────
 elif selection == "📋 Debtors":
@@ -585,12 +720,44 @@ elif selection == "📋 Debtors":
     st.divider()
     st.subheader("Debtors List")
     sf = site_filter()
-    debt_df = load_query(f"SELECT * FROM debtors WHERE {sf} ORDER BY entry_date DESC")
-    if not debt_df.empty:
-        st.dataframe(debt_df[["customer", "product", "qty", "amount", "paid", "balance", "entry_date", "site"]], use_container_width=True, hide_index=True)
-        total_debt = debt_df["balance"].sum()
-        st.metric("Total Outstanding Debt", f"Ksh {total_debt:,.0f}", delta=f"{len(debt_df)} debtors")
-        csv = debt_df.to_csv(index=False).encode()
+    debt_raw = load_query(f"SELECT * FROM debtors WHERE {sf} ORDER BY entry_date DESC")
+    if not debt_raw.empty:
+        for _, row in debt_raw.iterrows():
+            c1, c2, c3 = st.columns([5, 1, 1])
+            c1.markdown(f"**{row['customer']}** · {row['product']} · Bal: Ksh {row['balance']:,.0f}")
+            if c2.button("✏️", key=f"ed_{row['id']}"):
+                st.session_state.edit_debtor = row['id']
+            if c3.button("🗑️", key=f"dd_{row['id']}"):
+                conn().execute("DELETE FROM debtors WHERE id=?", (row['id'],)).connection.commit()
+                st.rerun()
+
+        if st.session_state.get("edit_debtor"):
+            rid = st.session_state.edit_debtor
+            orig = debt_raw[debt_raw['id'] == rid].iloc[0].to_dict()
+            with st.form("edit_debt_form"):
+                st.markdown(f"**Editing debtor #{rid}**")
+                col1, col2 = st.columns(2)
+                customer = col1.text_input("Customer", value=orig['customer'])
+                phone = col2.text_input("Phone", value=orig['phone'])
+                col3, col4 = st.columns(2)
+                d = col3.date_input("Date", date.fromisoformat(orig['entry_date']))
+                s = col4.selectbox("Site", get_sites(), index=["Ugunja","Siaya","Bondo"].index(orig['site']) if orig['site'] in ["Ugunja","Siaya","Bondo"] else 0)
+                i = st.selectbox("Product", list(PRICES.keys()), index=list(PRICES.keys()).index(orig['product']) if orig['product'] in PRICES else 0)
+                col5, col6, col7 = st.columns(3)
+                qty = col5.number_input("Qty", 1, value=int(orig['qty']))
+                amt = col6.number_input("Amount", 0.0, value=float(orig['amount']))
+                paid = col7.number_input("Paid", 0.0, value=float(orig['paid']))
+                c8, c9 = st.columns(2)
+                new_data = {"customer": customer, "phone": phone, "product": i, "qty": qty, "amount": amt, "paid": paid, "balance": amt - paid, "entry_date": d.isoformat(), "site": s}
+                if c8.form_submit_button("💾 Submit Edit"):
+                    submit_edit("debtors", rid, {k: orig[k] for k in new_data}, new_data, user["id"])
+                    st.session_state.edit_debtor = None; st.rerun()
+                if c9.form_submit_button("❌ Cancel"):
+                    st.session_state.edit_debtor = None; st.rerun()
+
+        total_debt = debt_raw["balance"].sum()
+        st.metric("Total Outstanding Debt", f"Ksh {total_debt:,.0f}", delta=f"{len(debt_raw)} debtors")
+        csv = debt_raw.to_csv(index=False).encode()
         st.download_button("📥 Download Debtors", csv, "Alexon_Debtors.csv", "text/csv")
 
 # ── PROFIT REPORT ───────────────────────────────────────────
@@ -622,6 +789,36 @@ elif selection == "📈 Profit Report":
         st.dataframe(site_profit, use_container_width=True, hide_index=True)
     else:
         st.info("Add entries to see profit report")
+
+# ── PENDING APPROVALS (admin only) ─────────────────────────
+elif selection and selection.startswith("⏳ Pending"):
+    if role != "admin":
+        st.error("Access denied. Admins only."); st.stop()
+    st.subheader("⏳ Pending Edits — Awaiting Your Approval")
+
+    pending = load_query("""
+        SELECT p.id, p.table_name, p.record_id, p.old_data, p.new_data,
+               u.username as editor, p.edited_at
+        FROM pending_edits p LEFT JOIN users u ON p.edited_by = u.id
+        WHERE p.status='pending' ORDER BY p.edited_at ASC
+    """)
+    if pending.empty:
+        st.info("No pending edits. All clear!")
+    else:
+        for _, row in pending.iterrows():
+            old_d = json.loads(row['old_data'])
+            new_d = json.loads(row['new_data'])
+            changed = {k: (old_d.get(k), new_d.get(k)) for k in new_d if old_d.get(k) != new_d.get(k)}
+            with st.container():
+                st.markdown(f"**#{row['id']}** · {row['table_name']} · by **{row['editor']}** · {row['edited_at']}")
+                for field, (old_v, new_v) in changed.items():
+                    st.markdown(f"&nbsp;&nbsp;📌 **{field}**: `{old_v}` → `{new_v}`")
+                c1, c2, c3 = st.columns([1, 1, 2])
+                if c1.button("✅ Approve", key=f"ap_{row['id']}"):
+                    approve_edit(row['id'], user['id']); st.rerun()
+                if c2.button("❌ Reject", key=f"rej_{row['id']}"):
+                    reject_edit(row['id'], user['id']); st.rerun()
+                st.divider()
 
 # ── USERS (admin only) ──────────────────────────────────────
 elif selection == "👥 Users":

@@ -292,29 +292,6 @@ username = user["username"]
 for k in ["edit_entry", "edit_expense", "edit_debtor", "edit_hire"]:
     if k not in st.session_state: st.session_state[k] = None
 
-# ── Sidebar ─────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(f"**👤 {username}** ({role.upper()})")
-    st.markdown(f"📍 Site: {site if site else 'All'}")
-    st.divider()
-
-    pc = pending_count()
-    pending_label = f"⏳ Pending ({pc})" if pc else "⏳ Pending"
-    menu_items = []
-    if role == "admin":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", pending_label, "👥 Users", "📁 All Data"]
-    elif role == "manager":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
-    else:
-        menu_items = ["📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📁 My Data"]
-
-    selection = st.radio("Menu", menu_items, label_visibility="collapsed")
-
-    st.divider()
-    if st.button("🚪 Logout", use_container_width=True):
-        st.session_state.user = None
-        st.rerun()
-
 # ── Helpers ─────────────────────────────────────────────────
 def load_query(q, params=()):
     c = conn()
@@ -358,6 +335,29 @@ def reject_edit(edit_id, admin_id):
     c = conn()
     c.execute("UPDATE pending_edits SET status='rejected', approved_by=?, approved_at=datetime('now') WHERE id=?", (admin_id, edit_id))
     c.commit(); c.close()
+
+# ── Sidebar ─────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(f"**👤 {username}** ({role.upper()})")
+    st.markdown(f"📍 Site: {site if site else 'All'}")
+    st.divider()
+
+    pc = pending_count()
+    pending_label = f"⏳ Pending ({pc})" if pc else "⏳ Pending"
+    menu_items = []
+    if role == "admin":
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", pending_label, "👥 Users", "📁 All Data"]
+    elif role == "manager":
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
+    else:
+        menu_items = ["📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📁 My Data"]
+
+    selection = st.radio("Menu", menu_items, label_visibility="collapsed")
+
+    st.divider()
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.user = None
+        st.rerun()
 
 def rank_color(val, is_max, is_min):
     """Green=best, yellow=good, orange=ok, red=worst"""

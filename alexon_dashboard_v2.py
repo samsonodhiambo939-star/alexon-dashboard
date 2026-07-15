@@ -20,53 +20,84 @@ if LOGO_PATH.exists():
 else:
     logo_src = None
 
-# ── Theme: Deep Navy / Gold / Blue ─────────────────────────
+# ── Theme: Cream / Green / Gold ────────────────────────────
+GREEN = "#2d6a4f"
 GOLD = "#D4AF37"
-DARK = "#0a1628"
-NAVY = "#0d1f3c"
-CARD_BG = "#0f2440"
-TEXT_LIGHT = "#f0f0f0"
-TEXT_MUTED = "#aab4c6"
+CREAM = "#F8F4ED"
+WHITE = "#FFFFFF"
+DARK_TEXT = "#1a1a2e"
+MUTED = "#666666"
 
 st.markdown(f"""
 <style>
     .block-container {{ max-width: 100% !important; padding: 1rem 2rem !important; }}
     @media (max-width: 767px) {{ .block-container {{ padding: 0.5rem 0.8rem !important; }} }}
 
-    #root, .stApp, .main, div[data-testid="stAppViewContainer"] {{
-        background-color: {DARK} !important;
-    }}
+    #root, .stApp, .main, div[data-testid="stAppViewContainer"],
     div[data-testid="stAppViewContainer"] > .main {{
-        background: linear-gradient(180deg, {DARK} 0%, {NAVY} 100%) !important;
+        background-color: {CREAM} !important;
+    }}
+
+    h1, h2, h3, h4, h5, h6, .stMarkdown, p, label,
+    .stTextInput label, .stSelectbox label, .stDateInput label, .stNumberInput label {{
+        color: {DARK_TEXT} !important;
     }}
 
     .logo-section {{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 0 16px; }}
-    .logo-circle {{ width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid {GOLD}; background:#fff; box-shadow:0 0 30px rgba(212,175,55,0.15); }}
+    .logo-circle {{ width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid {GOLD}; background:#fff; box-shadow:0 0 30px rgba(212,175,55,0.2); }}
     .logo-circle img {{ width:100%; height:100%; object-fit:cover; }}
     .logo-text {{ text-align:center; margin-top:12px; }}
-    .logo-text h1 {{ font-size:36px; font-weight:900; color:{GOLD}; letter-spacing:6px; text-transform:uppercase; margin:0; }}
-    .logo-text .sub {{ font-size:13px; color:{TEXT_MUTED}; letter-spacing:3px; }}
+    .logo-text h1 {{ font-size:36px; font-weight:900; color:{GREEN}; letter-spacing:6px; text-transform:uppercase; margin:0; }}
+    .logo-text .sub {{ font-size:13px; color:{MUTED}; letter-spacing:3px; }}
 
-    .login-box {{ max-width:400px; margin:40px auto; padding:40px; background:{CARD_BG}; border-radius:12px; box-shadow:0 4px 30px rgba(0,0,0,0.5); text-align:center; border:1px solid {GOLD}; }}
-    .login-box h2 {{ color:{GOLD} !important; }}
+    .login-box {{ max-width:400px; margin:40px auto; padding:40px; background:{WHITE}; border-radius:12px; box-shadow:0 4px 30px rgba(0,0,0,0.08); text-align:center; border:1px solid {GOLD}; }}
+    .login-box h2 {{ color:{GREEN} !important; }}
+
+    .stTextInput input, .stSelectbox div, .stDateInput input, .stNumberInput input {{
+        background-color: {WHITE} !important; color: {DARK_TEXT} !important; border: 1px solid #ccc !important;
+    }}
+    div[data-baseweb="select"] > div {{ background-color: {WHITE} !important; color: {DARK_TEXT} !important; }}
+    div[data-baseweb="select"] ul {{ background-color: {WHITE} !important; }}
+    div[data-baseweb="select"] li {{ color: {DARK_TEXT} !important; }}
 
     .stButton button {{
         width:100%; border-radius:8px !important; font-weight:600 !important;
-        background-color: {GOLD} !important; color: #000 !important; border: none !important;
+        background-color: {GREEN} !important; color: #fff !important; border: none !important;
     }}
-    .stButton button:hover {{ background-color: #e5c04f !important; }}
+    .stButton button:hover {{ background-color: #1e5740 !important; }}
+
+    .st-emotion-cache-1c7y2kd, .stMetric label, .stMetric .metric-label {{ color: {MUTED} !important; }}
+    .stMetric .metric-value {{ color: {GREEN} !important; font-weight:700 !important; }}
+    .stMetric .metric-delta {{ font-weight:500 !important; }}
+
+    div[data-testid="metric-container"] {{
+        background: {WHITE}; padding:16px; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,0.04);
+    }}
 
     div[data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, #060f1c 0%, #0a1628 100%) !important;
-        border-right: 1px solid {GOLD} !important;
+        background: linear-gradient(180deg, #0f2a1e 0%, #1a3c2a 100%) !important;
+        border-right: 2px solid {GOLD} !important;
     }}
+    div[data-testid="stSidebar"] .stMarkdown,
+    div[data-testid="stSidebar"] .stRadio div,
+    div[data-testid="stSidebar"] label {{
+        color: #f0f0f0 !important;
+    }}
+    div[data-testid="stSidebar"] .stRadio label:hover {{ color: {GOLD} !important; }}
     div[data-testid="stSidebarNav"] {{ display:none !important; }}
 
-    .stDataFrame thead tr th {{ background-color: #0d1f3c !important; color: {GOLD} !important; }}
+    .stDataFrame {{ background: {WHITE} !important; border-radius:8px; }}
+    .stDataFrame thead tr th {{ background-color: {GREEN} !important; color: {GOLD} !important; }}
+    .stDataFrame tbody tr td {{ background-color: {WHITE} !important; border-bottom:1px solid #eee !important; }}
 
-    .stTabs [aria-selected="true"] {{ color: {GOLD} !important; border-bottom-color: {GOLD} !important; }}
+    .stTabs [data-baseweb="tab-list"] {{ background: {WHITE} !important; border-radius:8px 8px 0 0; }}
+    .stTabs [data-baseweb="tab"] {{ color: {MUTED} !important; }}
+    .stTabs [aria-selected="true"] {{ color: {GREEN} !important; border-bottom-color: {GOLD} !important; }}
 
-    hr {{ border-color: #1a3355 !important; }}
+    div[role="alert"] {{ background-color: #ffe6e6 !important; color: #b30000 !important; border:1px solid #ff9999 !important; }}
+    .stAlert {{ background-color: #e6ffe6 !important; color: #006600 !important; border:1px solid #99ff99 !important; }}
+
+    hr {{ border-color: #e0d8cc !important; }}
 </style>
 """, unsafe_allow_html=True)
 

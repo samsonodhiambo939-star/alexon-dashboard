@@ -20,14 +20,13 @@ if LOGO_PATH.exists():
 else:
     logo_src = None
 
-# ── Theme: Gold / Black / Blue ──────────────────────────────
+# ── Theme: Deep Navy / Gold / Blue ─────────────────────────
 GOLD = "#D4AF37"
-DARK = "#0d0d0d"
-BLUE = "#1a3a5c"
-LIGHT_BLUE = "#2a5a8c"
-CARD_BG = "#1a1a1a"
+DARK = "#0a1628"
+NAVY = "#0d1f3c"
+CARD_BG = "#0f2440"
 TEXT_LIGHT = "#f0f0f0"
-TEXT_MUTED = "#aaaaaa"
+TEXT_MUTED = "#aab4c6"
 
 st.markdown(f"""
 <style>
@@ -38,16 +37,17 @@ st.markdown(f"""
         background-color: {DARK} !important;
     }}
     div[data-testid="stAppViewContainer"] > .main {{
-        background-color: {DARK} !important;
+        background: linear-gradient(180deg, {DARK} 0%, {NAVY} 100%) !important;
     }}
 
-    .logo-section {{ display:flex; align-items:center; gap:16px; padding:12px 0; }}
-    .logo-circle {{ width:70px; height:70px; min-width:70px; border-radius:50%; overflow:hidden; border:2px solid {GOLD}; background:#fff; }}
+    .logo-section {{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 0 16px; }}
+    .logo-circle {{ width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid {GOLD}; background:#fff; box-shadow:0 0 30px rgba(212,175,55,0.15); }}
     .logo-circle img {{ width:100%; height:100%; object-fit:cover; }}
-    .logo-text h1 {{ font-size:28px; font-weight:900; color:{GOLD}; letter-spacing:4px; text-transform:uppercase; margin:0; }}
-    .logo-text .sub {{ font-size:12px; color:#ccc; letter-spacing:2px; }}
+    .logo-text {{ text-align:center; margin-top:12px; }}
+    .logo-text h1 {{ font-size:36px; font-weight:900; color:{GOLD}; letter-spacing:6px; text-transform:uppercase; margin:0; }}
+    .logo-text .sub {{ font-size:13px; color:{TEXT_MUTED}; letter-spacing:3px; }}
 
-    .login-box {{ max-width:400px; margin:80px auto; padding:40px; background:{CARD_BG}; border-radius:12px; box-shadow:0 2px 20px rgba(0,0,0,0.5); text-align:center; border:1px solid {GOLD}; }}
+    .login-box {{ max-width:400px; margin:40px auto; padding:40px; background:{CARD_BG}; border-radius:12px; box-shadow:0 4px 30px rgba(0,0,0,0.5); text-align:center; border:1px solid {GOLD}; }}
     .login-box h2 {{ color:{GOLD} !important; }}
 
     .stButton button {{
@@ -57,15 +57,16 @@ st.markdown(f"""
     .stButton button:hover {{ background-color: #e5c04f !important; }}
 
     div[data-testid="stSidebar"] {{
-        background-color: #111 !important; border-right: 1px solid {GOLD} !important;
+        background: linear-gradient(180deg, #060f1c 0%, #0a1628 100%) !important;
+        border-right: 1px solid {GOLD} !important;
     }}
     div[data-testid="stSidebarNav"] {{ display:none !important; }}
 
-    .stDataFrame thead tr th {{ background-color: {BLUE} !important; color: {GOLD} !important; }}
+    .stDataFrame thead tr th {{ background-color: #0d1f3c !important; color: {GOLD} !important; }}
 
     .stTabs [aria-selected="true"] {{ color: {GOLD} !important; border-bottom-color: {GOLD} !important; }}
 
-    hr {{ border-color: #333 !important; }}
+    hr {{ border-color: #1a3355 !important; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,7 +78,7 @@ if logo_src:
     </div>
     """, unsafe_allow_html=True)
 else:
-    st.markdown(f"<div class='logo-section'><div class='logo-text'><h1>ALEXON</h1><div class='sub'>Group · M&E v2.0</div></div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='logo-section'><div class='logo-circle' style='width:120px;height:120px;border-radius:50%;background:{GOLD};display:flex;align-items:center;justify-content:center;'><span style='color:#000;font-weight:900;font-size:40px;'>A</span></div><div class='logo-text'><h1>ALEXON</h1><div class='sub'>Group · M&E v2.0</div></div></div>", unsafe_allow_html=True)
 
 # ── Database ────────────────────────────────────────────────
 DB = Path(__file__).parent / "alexon_v2.db"

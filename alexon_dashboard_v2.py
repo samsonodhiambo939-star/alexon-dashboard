@@ -132,6 +132,23 @@ def init_db():
             user_id INTEGER,
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS hires (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer TEXT NOT NULL,
+            phone TEXT DEFAULT '',
+            equipment TEXT NOT NULL,
+            daily_rate REAL NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            days INTEGER NOT NULL,
+            total_cost REAL NOT NULL,
+            paid REAL NOT NULL DEFAULT 0,
+            balance REAL NOT NULL,
+            returned INTEGER NOT NULL DEFAULT 0,
+            site TEXT NOT NULL,
+            user_id INTEGER,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
         CREATE TABLE IF NOT EXISTS credits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             entry_date TEXT NOT NULL,
@@ -164,6 +181,12 @@ def init_db():
     c.close()
 
 init_db()
+
+EQUIPMENT_ITEMS = [
+    "Mixer Hire/Day", "Crane Lifter/Day", "Concrete Mixer", "Concrete Mixer Machine",
+    "Caterpillar Grader 140K", "Wheel Loader", "Backhoe Loader", "Excavator",
+    "Roller 20T", "Water Bowser 10000L", "Tipper Lorry 10T",
+]
 
 PRICES = {
     "Block Large 6x15x10": 75, "Block Medium 4x15x10": 65,
@@ -226,11 +249,11 @@ with st.sidebar:
 
     menu_items = []
     if role == "admin":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "📋 Debtors", "📈 Profit Report", "👥 Users", "📁 All Data"]
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "👥 Users", "📁 All Data"]
     elif role == "manager":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
     else:
-        menu_items = ["📝 Daily Entry", "💰 Expenses", "📋 Debtors", "📁 My Data"]
+        menu_items = ["📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📁 My Data"]
 
     selection = st.radio("Menu", menu_items, label_visibility="collapsed")
 
@@ -286,15 +309,24 @@ if selection == "📊 Dashboard":
     exp_df = load_query(f"SELECT * FROM expenses WHERE {sf}")
     debt_df = load_query(f"SELECT * FROM debtors WHERE {sf}")
 
-    if not df.empty:
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("💰 Revenue", f"Ksh {df['revenue'].sum():,}")
-        kpi2.metric("📦 Sold", f"{df['sold'].sum():,}")
-        kpi3.metric("🏭 Produced", f"{df['produced'].sum():,}")
-        total_exp = exp_df['amount'].sum() if not exp_df.empty else 0
-        total_debt = debt_df['balance'].sum() if not debt_df.empty else 0
-        kpi4.metric("💸 Expenses", f"Ksh {total_exp:,.0f}", delta=f"Debt: Ksh {total_debt:,.0f}")
+    hire_df = load_query(f"SELECT * FROM hires WHERE {sf}")
 
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
+    total_rev = df['revenue'].sum() if not df.empty else 0
+    total_sold = df['sold'].sum() if not df.empty else 0
+    total_prod = df['produced'].sum() if not df.empty else 0
+    total_exp = exp_df['amount'].sum() if not exp_df.empty else 0
+    total_debt = debt_df['balance'].sum() if not debt_df.empty else 0
+    hire_rev = hire_df['total_cost'].sum() if not hire_df.empty else 0
+    hire_bal = hire_df['balance'].sum() if not hire_df.empty else 0
+
+    kpi1.metric("💰 Revenue", f"Ksh {total_rev:,}")
+    kpi2.metric("📦 Sold", f"{total_sold:,}")
+    kpi3.metric("🏭 Produced", f"{total_prod:,}")
+    kpi4.metric("💸 Expenses", f"Ksh {total_exp:,.0f}", delta=f"Debt: Ksh {total_debt:,.0f}")
+    kpi5.metric("🔧 Equipment Hire", f"Ksh {hire_rev:,.0f}", delta=f"Due: Ksh {hire_bal:,.0f}")
+
+    if not df.empty:
         # ── Sales Performance Ranking: Products ──────────────
         st.markdown("---")
         st.subheader("🏆 Sales Performance Ranking — by Product")
@@ -352,8 +384,13 @@ if selection == "📊 Dashboard":
                     else "background:#1a6b3c; color:#fff" if x >= 200
                     else "background:#b5732a; color:#fff" for x in vals]
         st.dataframe(stock.style.apply(alert_color, axis=1), use_container_width=True)
-    else:
-        st.info("No data yet. Enter some daily entries first.")
+
+    if not hire_df.empty:
+        st.markdown("---")
+        st.subheader("🔧 Active Equipment Hires")
+        active_hires = hire_df[hire_df['returned'] == 0]
+        if not active_hires.empty:
+            st.dataframe(active_hires[["customer", "equipment", "start_date", "end_date", "balance"]], use_container_width=True, hide_index=True)
 
 # ── DAILY ENTRY ─────────────────────────────────────────────
 elif selection == "📝 Daily Entry":
@@ -416,6 +453,72 @@ elif selection == "💰 Expenses":
     if not exp_df.empty:
         st.dataframe(exp_df[["expense_date", "site", "category", "amount", "description"]], use_container_width=True, hide_index=True)
         st.metric("Total Expenses", f"Ksh {exp_df['amount'].sum():,.0f}")
+
+# ── EQUIPMENT HIRE ─────────────────────────────────────────
+elif selection == "🔧 Equipment Hire":
+    st.subheader("🔧 Equipment Hire Management")
+
+    tab_new, tab_active, tab_history = st.tabs(["➕ New Hire", "📌 Active Hires", "📋 All History"])
+
+    with tab_new:
+        sites = get_sites()
+        with st.form("hire_form", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            customer = col1.text_input("Customer Name")
+            phone = col2.text_input("Phone")
+            col3, col4 = st.columns(2)
+            equip = col3.selectbox("Equipment", EQUIPMENT_ITEMS)
+            site = col4.selectbox("Site", sites)
+            col5, col6 = st.columns(2)
+            sdate = col5.date_input("Start Date", date.today())
+            edate = col6.date_input("End Date", date.today() + timedelta(days=1))
+            days = max(1, (edate - sdate).days)
+            rate = PRICES[equip]
+            total = days * rate
+            st.info(f"**{days} day(s)** × **Ksh {rate:,}/day** = **Ksh {total:,}**")
+            col7, col8 = st.columns(2)
+            paid = col7.number_input("Amount Paid", 0.0)
+            balance = total - paid
+            st.caption(f"Balance: Ksh {balance:,.0f}")
+
+            if st.form_submit_button("💾 Record Hire"):
+                c = conn()
+                c.execute("""INSERT INTO hires (customer, phone, equipment, daily_rate, start_date, end_date, days, total_cost, paid, balance, site, user_id)
+                          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                          (customer, phone, equip, rate, sdate.isoformat(), edate.isoformat(), days, total, paid, balance, site, user["id"]))
+                c.commit()
+                c.close()
+                st.success(f"Hire recorded! Balance: Ksh {balance:,.0f}")
+                st.rerun()
+
+    with tab_active:
+        sf = site_filter()
+        active = load_query(f"SELECT * FROM hires WHERE {sf} AND returned=0 ORDER BY start_date DESC")
+        if not active.empty:
+            for _, row in active.iterrows():
+                with st.container():
+                    c1, c2, c3, c4, c5 = st.columns([2,1.5,1,1,1])
+                    c1.markdown(f"**{row['customer']}** — {row['equipment']}")
+                    c2.markdown(f"{row['start_date']} → {row['end_date']} ({row['days']}d)")
+                    c3.markdown(f"Ksh {row['total_cost']:,.0f}")
+                    c4.markdown(f"Bal: Ksh {row['balance']:,.0f}")
+                    if c5.button("✅ Returned", key=f"ret_{row['id']}"):
+                        conn().execute("UPDATE hires SET returned=1 WHERE id=?", (row['id'],)).connection.commit()
+                        st.rerun()
+                    st.divider()
+        else:
+            st.info("No active hires")
+
+    with tab_history:
+        sf = site_filter()
+        hires = load_query(f"SELECT customer as Customer, phone as Phone, equipment as Equipment, daily_rate as Rate, start_date as 'Start', end_date as 'End', days as Days, total_cost as Total, paid as Paid, balance as Balance, CASE WHEN returned THEN '✅ Returned' ELSE '❌ Out' END as Status FROM hires WHERE {sf} ORDER BY start_date DESC")
+        if not hires.empty:
+            st.dataframe(hires, use_container_width=True, hide_index=True)
+            csv = hires.to_csv(index=False).encode()
+            st.download_button("📥 Download Hires", csv, "Alexon_Hires.csv", "text/csv")
+            total_hire_debt = hires[pd.to_numeric(hires['Balance'], errors='coerce') > 0]['Balance'].sum() if 'Balance' in hires.columns else 0
+            if total_hire_debt > 0:
+                st.metric("Total Outstanding from Hires", f"Ksh {total_hire_debt:,.0f}")
 
 # ── DEBTORS ─────────────────────────────────────────────────
 elif selection == "📋 Debtors":
@@ -523,7 +626,9 @@ elif selection in ("📁 All Data", "📁 My Data"):
     expenses = load_query(f"SELECT expense_date as Date, site as Site, category as Category, amount as Amount, description as Desc FROM expenses WHERE {sf} ORDER BY expense_date DESC LIMIT 200")
     debtors = load_query(f"SELECT customer as Customer, product as Product, qty as Qty, amount as Amount, paid as Paid, balance as Balance FROM debtors WHERE {sf} ORDER BY entry_date DESC LIMIT 200")
 
-    tab1, tab2, tab3 = st.tabs(["📦 Entries", "💰 Expenses", "📋 Debtors"])
+    hires = load_query(f"SELECT customer as Customer, equipment as Equipment, daily_rate as Rate, start_date as 'Start', end_date as 'End', days as Days, total_cost as Total, paid as Paid, balance as Balance, CASE WHEN returned THEN '✅' ELSE '❌' END as Returned FROM hires WHERE {sf} ORDER BY start_date DESC LIMIT 200")
+
+    tab1, tab2, tab3, tab4 = st.tabs(["📦 Entries", "💰 Expenses", "🔧 Hires", "📋 Debtors"])
     with tab1:
         if not entries.empty:
             st.dataframe(entries, use_container_width=True, hide_index=True)
@@ -531,5 +636,8 @@ elif selection in ("📁 All Data", "📁 My Data"):
         if not expenses.empty:
             st.dataframe(expenses, use_container_width=True, hide_index=True)
     with tab3:
+        if not hires.empty:
+            st.dataframe(hires, use_container_width=True, hide_index=True)
+    with tab4:
         if not debtors.empty:
             st.dataframe(debtors, use_container_width=True, hide_index=True)

@@ -332,6 +332,10 @@ def get_sites():
         return [site]
     return ["Ugunja", "Siaya", "Bondo"]
 
+def pending_count():
+    try: return conn().execute("SELECT COUNT(*) FROM pending_edits WHERE status='pending'").fetchone()[0]
+    except: return 0
+
 def submit_edit(table_name, record_id, old_data, new_data, user_id):
     c = conn()
     c.execute("INSERT INTO pending_edits (table_name, record_id, old_data, new_data, edited_by) VALUES (?,?,?,?,?)",
@@ -354,9 +358,6 @@ def reject_edit(edit_id, admin_id):
     c = conn()
     c.execute("UPDATE pending_edits SET status='rejected', approved_by=?, approved_at=datetime('now') WHERE id=?", (admin_id, edit_id))
     c.commit(); c.close()
-
-def pending_count():
-    return conn().execute("SELECT COUNT(*) FROM pending_edits WHERE status='pending'").fetchone()[0]
 
 def rank_color(val, is_max, is_min):
     """Green=best, yellow=good, orange=ok, red=worst"""

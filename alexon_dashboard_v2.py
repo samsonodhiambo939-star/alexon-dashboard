@@ -20,13 +20,13 @@ if LOGO_PATH.exists():
 else:
     logo_src = None
 
-# ── Theme: Cream / Black / Gold ────────────────────────────
-BLACK = "#111111"
+# ── Theme: Navy Black / Gold ───────────────────────────────
+NAVY = "#0a1628"
+DARK_CARD = "#0f1e36"
 GOLD = "#D4AF37"
-CREAM = "#F8F4ED"
 WHITE = "#FFFFFF"
-DARK_TEXT = "#1a1a2e"
-MUTED = "#666666"
+TEXT_LIGHT = "#e8ecf1"
+TEXT_MUTED = "#8896a8"
 
 st.markdown(f"""
 <style>
@@ -35,69 +35,72 @@ st.markdown(f"""
 
     #root, .stApp, .main, div[data-testid="stAppViewContainer"],
     div[data-testid="stAppViewContainer"] > .main {{
-        background-color: {CREAM} !important;
+        background: linear-gradient(180deg, {NAVY} 0%, #081322 100%) !important;
     }}
 
     h1, h2, h3, h4, h5, h6, .stMarkdown, p, label,
     .stTextInput label, .stSelectbox label, .stDateInput label, .stNumberInput label {{
-        color: {DARK_TEXT} !important;
+        color: {TEXT_LIGHT} !important;
     }}
 
     .logo-section {{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 0 16px; }}
-    .logo-circle {{ width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid {GOLD}; background:#fff; box-shadow:0 0 30px rgba(212,175,55,0.2); }}
+    .logo-circle {{ width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid {GOLD}; background:#fff; box-shadow:0 0 40px rgba(212,175,55,0.2); }}
     .logo-circle img {{ width:100%; height:100%; object-fit:cover; }}
     .logo-text {{ text-align:center; margin-top:12px; }}
-    .logo-text h1 {{ font-size:36px; font-weight:900; color:{BLACK}; letter-spacing:6px; text-transform:uppercase; margin:0; }}
-    .logo-text .sub {{ font-size:13px; color:{MUTED}; letter-spacing:3px; }}
+    .logo-text h1 {{ font-size:36px; font-weight:900; color:{GOLD}; letter-spacing:6px; text-transform:uppercase; margin:0; }}
+    .logo-text .sub {{ font-size:13px; color:{TEXT_MUTED}; letter-spacing:3px; }}
 
-    .login-box {{ max-width:400px; margin:40px auto; padding:40px; background:{WHITE}; border-radius:12px; box-shadow:0 4px 30px rgba(0,0,0,0.08); text-align:center; border:1px solid {GOLD}; }}
-    .login-box h2 {{ color:{BLACK} !important; }}
+    .login-box {{ max-width:400px; margin:40px auto; padding:40px; background:{DARK_CARD}; border-radius:12px; box-shadow:0 4px 30px rgba(0,0,0,0.5); text-align:center; border:1px solid {GOLD}; }}
+    .login-box h2 {{ color:{GOLD} !important; }}
 
     .stTextInput input, .stSelectbox div, .stDateInput input, .stNumberInput input {{
-        background-color: {WHITE} !important; color: {DARK_TEXT} !important; border: 1px solid #ccc !important;
+        background-color: #152238 !important; color: {TEXT_LIGHT} !important; border: 1px solid #1e3452 !important;
     }}
-    div[data-baseweb="select"] > div {{ background-color: {WHITE} !important; color: {DARK_TEXT} !important; }}
-    div[data-baseweb="select"] ul {{ background-color: {WHITE} !important; }}
-    div[data-baseweb="select"] li {{ color: {DARK_TEXT} !important; }}
+    .stTextInput input:focus, .stSelectbox div:focus, .stDateInput input:focus, .stNumberInput input:focus {{
+        border-color: {GOLD} !important; box-shadow: 0 0 0 1px {GOLD} !important;
+    }}
+    div[data-baseweb="select"] > div {{ background-color: #152238 !important; color: {TEXT_LIGHT} !important; }}
+    div[data-baseweb="select"] ul {{ background-color: #152238 !important; }}
+    div[data-baseweb="select"] li {{ color: {TEXT_LIGHT} !important; }}
 
     .stButton button {{
         width:100%; border-radius:8px !important; font-weight:600 !important;
-        background-color: {BLACK} !important; color: #fff !important; border: none !important;
+        background-color: {GOLD} !important; color: #000 !important; border: none !important;
     }}
-    .stButton button:hover {{ background-color: #333 !important; }}
+    .stButton button:hover {{ background-color: #e5c04f !important; }}
 
-    .st-emotion-cache-1c7y2kd, .stMetric label, .stMetric .metric-label {{ color: {MUTED} !important; }}
-    .stMetric .metric-value {{ color: {BLACK} !important; font-weight:700 !important; }}
+    .st-emotion-cache-1c7y2kd, .stMetric label, .stMetric .metric-label {{ color: {TEXT_MUTED} !important; }}
+    .stMetric .metric-value {{ color: {GOLD} !important; font-weight:700 !important; }}
     .stMetric .metric-delta {{ font-weight:500 !important; }}
 
     div[data-testid="metric-container"] {{
-        background: {WHITE}; padding:16px; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,0.04);
+        background: {DARK_CARD}; padding:16px; border-radius:10px; border:1px solid #1e3452;
     }}
 
     div[data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, #111 0%, #222 100%) !important;
+        background: linear-gradient(180deg, #060f1c 0%, #0a1628 100%) !important;
         border-right: 2px solid {GOLD} !important;
     }}
     div[data-testid="stSidebar"] .stMarkdown,
     div[data-testid="stSidebar"] .stRadio div,
     div[data-testid="stSidebar"] label {{
-        color: #f0f0f0 !important;
+        color: {TEXT_LIGHT} !important;
     }}
     div[data-testid="stSidebar"] .stRadio label:hover {{ color: {GOLD} !important; }}
     div[data-testid="stSidebarNav"] {{ display:none !important; }}
 
-    .stDataFrame {{ background: {WHITE} !important; border-radius:8px; }}
-    .stDataFrame thead tr th {{ background-color: {BLACK} !important; color: {GOLD} !important; }}
-    .stDataFrame tbody tr td {{ background-color: {WHITE} !important; border-bottom:1px solid #eee !important; }}
+    .stDataFrame {{ background: {DARK_CARD} !important; border-radius:8px; }}
+    .stDataFrame thead tr th {{ background-color: #0a1628 !important; color: {GOLD} !important; }}
+    .stDataFrame tbody tr td {{ background-color: {DARK_CARD} !important; border-bottom:1px solid #1e3452 !important; color: {TEXT_LIGHT} !important; }}
 
-    .stTabs [data-baseweb="tab-list"] {{ background: {WHITE} !important; border-radius:8px 8px 0 0; }}
-    .stTabs [data-baseweb="tab"] {{ color: {MUTED} !important; }}
-    .stTabs [aria-selected="true"] {{ color: {BLACK} !important; border-bottom-color: {GOLD} !important; }}
+    .stTabs [data-baseweb="tab-list"] {{ background: {DARK_CARD} !important; border-radius:8px 8px 0 0; }}
+    .stTabs [data-baseweb="tab"] {{ color: {TEXT_MUTED} !important; }}
+    .stTabs [aria-selected="true"] {{ color: {GOLD} !important; border-bottom-color: {GOLD} !important; }}
 
-    div[role="alert"] {{ background-color: #ffe6e6 !important; color: #b30000 !important; border:1px solid #ff9999 !important; }}
-    .stAlert {{ background-color: #e6ffe6 !important; color: #006600 !important; border:1px solid #99ff99 !important; }}
+    div[role="alert"] {{ background-color: #2a1a1a !important; color: #ff6b6b !important; border:1px solid #ff4444 !important; }}
+    .stAlert {{ background-color: #1a2a1a !important; color: #6bff6b !important; border:1px solid #44ff44 !important; }}
 
-    hr {{ border-color: #e0d8cc !important; }}
+    hr {{ border-color: #1e3452 !important; }}
 </style>
 """, unsafe_allow_html=True)
 

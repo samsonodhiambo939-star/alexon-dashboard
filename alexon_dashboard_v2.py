@@ -7,6 +7,7 @@ import hashlib
 import uuid
 import os
 import json
+import io
 
 st.set_page_config(page_title="Alexon Group M&E v2.0", layout="wide", initial_sidebar_state="expanded")
 
@@ -346,7 +347,7 @@ with st.sidebar:
     pending_label = f"⏳ Pending ({pc})" if pc else "⏳ Pending"
     menu_items = []
     if role == "admin":
-        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", pending_label, "👥 Users", "📁 All Data"]
+        menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", pending_label, "📊 Reports", "👥 Users", "📁 All Data"]
     elif role == "manager":
         menu_items = ["📊 Dashboard", "📝 Daily Entry", "💰 Expenses", "🔧 Equipment Hire", "📋 Debtors", "📈 Profit Report", "📁 All Data"]
     else:
@@ -820,6 +821,62 @@ elif selection and selection.startswith("⏳ Pending"):
                 if c2.button("❌ Reject", key=f"rej_{row['id']}"):
                     reject_edit(row['id'], user['id']); st.rerun()
                 st.divider()
+
+# ── REPORTS (admin only) ──────────────────────────────────
+elif selection == "📊 Reports":
+    if role != "admin": st.error("Access denied"); st.stop()
+    st.subheader("📊 Data Export — Excel & Power BI")
+
+    tab_xl, tab_pb = st.tabs(["📗 Excel Report", "📄 Power BI CSV"])
+
+    with tab_xl:
+        st.markdown("Download a multi-sheet Excel workbook with all data.")
+        if st.button("📗 Generate & Download Excel Report"):
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+                entries = load_query("SELECT entry_date as Date, site as Site, item as Item, produced as Prod, sold as Sold, wastage as Waste, revenue as Rev FROM entries ORDER BY entry_date DESC")
+                if not entries.empty: entries.to_excel(writer, sheet_name='Entries', index=False)
+                expenses = load_query("SELECT expense_date as Date, site as Site, category as Category, amount as Amount, description as Desc FROM expenses ORDER BY expense_date DESC")
+                if not expenses.empty: expenses.to_excel(writer, sheet_name='Expenses', index=False)
+                debtors = load_query("SELECT customer as Customer, product as Product, qty as Qty, amount as Amount, paid as Paid, balance as Balance, entry_date as Date, site as Site FROM debtors ORDER BY entry_date DESC")
+                if not debtors.empty: debtors.to_excel(writer, sheet_name='Debtors', index=False)
+                hires = load_query("SELECT customer as Customer, equipment as Equipment, daily_rate as Rate, start_date as Start, end_date as End, days as Days, total_cost as Total, paid as Paid, balance as Balance, site as Site FROM hires ORDER BY start_date DESC")
+                if not hires.empty: hires.to_excel(writer, sheet_name='Equipment_Hire', index=False)
+                users = load_query("SELECT username, role, site, created_at FROM users")
+                if not users.empty: users.to_excel(writer, sheet_name='Users', index=False)
+                # Combined flat table for Power Pivot
+                if not entries.empty:
+                    entries['Source'] = 'Entry'
+                    combined = entries.rename(columns={'Date':'Date','Site':'Site','Item':'Item','Prod':'Qty','Sold':'','Wastage':'','Rev':'Amount'})
+                    # simplified combined
+                    entries.to_excel(writer, sheet_name='All_Entries', index=False)
+            st.success("Excel report generated! Click below to download.")
+            st.download_button("📥 Download Excel", buf.getvalue(), "Alexon_Full_Report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+    with tab_pb:
+        st.markdown("Download CSV files for Power BI Desktop. Import each CSV as a table.")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            entries_csv = load_query("SELECT entry_date as Date, site as Site, item as Item, produced as Prod, sold as Sold, wastage as Waste, revenue as Rev FROM entries ORDER BY entry_date DESC")
+            if not entries_csv.empty:
+                st.download_button("📄 Entries CSV", entries_csv.to_csv(index=False).encode(), "Alexon_Entries.csv", "text/csv", use_container_width=True)
+        with col2:
+            exp_csv = load_query("SELECT expense_date as Date, site as Site, category as Category, amount as Amount, description as Desc FROM expenses ORDER BY expense_date DESC")
+            if not exp_csv.empty:
+                st.download_button("📄 Expenses CSV", exp_csv.to_csv(index=False).encode(), "Alexon_Expenses.csv", "text/csv", use_container_width=True)
+        with col3:
+            debt_csv = load_query("SELECT customer as Customer, product as Product, qty as Qty, amount as Amount, paid as Paid, balance as Balance, entry_date as Date, site as Site FROM debtors ORDER BY entry_date DESC")
+            if not debt_csv.empty:
+                st.download_button("📄 Debtors CSV", debt_csv.to_csv(index=False).encode(), "Alexon_Debtors.csv", "text/csv", use_container_width=True)
+        with col4:
+            hire_csv = load_query("SELECT customer as Customer, equipment as Equipment, daily_rate as Rate, start_date as Start, end_date as End, days as Days, total_cost as Total, paid as Paid, balance as Balance, site as Site FROM hires ORDER BY start_date DESC")
+            if not hire_csv.empty:
+                st.download_button("📄 Hires CSV", hire_csv.to_csv(index=False).encode(), "Alexon_Hires.csv", "text/csv", use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("**Power BI Connection String** — use this URL for live data feed:")
+        pb_url = "https://alexon-dashboard-jaswfbjchjvhqmidx7vz2l.streamlit.app"
+        st.code(f"Source = Web.Contents(\"{pb_url}/?format=csv\")", language="powerquery")
 
 # ── USERS (admin only) ──────────────────────────────────────
 elif selection == "👥 Users":

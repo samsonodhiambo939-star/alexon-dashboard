@@ -764,33 +764,51 @@ elif selection == "📋 Debtors":
 
 # ── PROFIT REPORT ───────────────────────────────────────────
 elif selection == "📈 Profit Report":
-    st.subheader("📈 Profit Calculator")
+    st.subheader("📈 Profit Report — Sales + Equipment Hire")
     sf = site_filter()
     df = load_query(f"SELECT * FROM entries WHERE {sf}")
     exp_df = load_query(f"SELECT * FROM expenses WHERE {sf}")
+    hire_df = load_query(f"SELECT * FROM hires WHERE {sf}")
+
+    total_rev = df['revenue'].sum() if not df.empty else 0
+    prod_costs = exp_df[exp_df["category"].isin(["Labor", "Materials"])]["amount"].sum() if not exp_df.empty else 0
+    transport = exp_df[exp_df["category"] == "Transport"]["amount"].sum() if not exp_df.empty else 0
+    hire_rev = hire_df['total_cost'].sum() if not hire_df.empty else 0
+    fuel_costs = exp_df[exp_df["category"] == "Fuel"]["amount"].sum() if not exp_df.empty else 0
+    repairs = exp_df[exp_df["category"] == "Repairs"]["amount"].sum() if not exp_df.empty else 0
+    hire_costs = fuel_costs + repairs
+    total_profit = (total_rev - prod_costs - transport) + (hire_rev - hire_costs)
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("💰 Sales Revenue", f"Ksh {total_rev:,.0f}")
+    kpi2.metric("🔧 Hire Revenue", f"Ksh {hire_rev:,.0f}")
+    kpi3.metric("⚙️ Total Costs", f"Ksh {prod_costs + transport + hire_costs:,.0f}", delta=f"Prod: {prod_costs:,.0f} + Hire Ops: {hire_costs:,.0f}")
+    kpi4.metric("📈 Total Net Profit", f"Ksh {total_profit:,.0f}", delta=f"Margin: {(total_profit/(total_rev+hire_rev)*100):.0f}%" if (total_rev+hire_rev) > 0 else "0%")
 
     if not df.empty:
-        prod_costs = exp_df[exp_df["category"].isin(["Labor", "Materials"])]["amount"].sum() if not exp_df.empty else 0
-        transport = exp_df[exp_df["category"] == "Transport"]["amount"].sum() if not exp_df.empty else 0
-        total_rev = df["revenue"].sum()
-        profit = total_rev - prod_costs - transport
-
-        kpi1, kpi2, kpi3 = st.columns(3)
-        kpi1.metric("💰 Total Revenue", f"Ksh {total_rev:,.0f}")
-        kpi2.metric("⚙️ Production Costs", f"Ksh {prod_costs:,.0f}")
-        kpi3.metric("📈 Net Profit", f"Ksh {profit:,.0f}", delta=f"Margin: {(profit/total_rev*100):.0f}%" if total_rev > 0 else "0%")
-
-        st.subheader("Profit by Product")
+        st.markdown("---")
+        st.subheader("Sales Profit by Product")
         prod_profit = df.groupby("item").agg({"revenue": "sum", "sold": "sum"}).reset_index()
         prod_profit.columns = ["Product", "Revenue", "Sold"]
         st.dataframe(prod_profit, use_container_width=True, hide_index=True)
 
-        st.subheader("Profit by Site")
+        st.subheader("Sales Profit by Site")
         site_profit = df.groupby("site")["revenue"].sum().reset_index()
         site_profit.columns = ["Site", "Revenue"]
         st.dataframe(site_profit, use_container_width=True, hide_index=True)
-    else:
-        st.info("Add entries to see profit report")
+
+    if not hire_df.empty:
+        st.markdown("---")
+        st.subheader("Equipment Hire Profit")
+        hire_summary = hire_df.groupby("equipment").agg(Revenue=("total_cost", "sum"), Outstanding=("balance", "sum"), Hires=("id", "count")).reset_index()
+        st.dataframe(hire_summary, use_container_width=True, hide_index=True)
+
+        st.subheader("Hire Profit by Site")
+        hire_site = hire_df.groupby("site").agg(Revenue=("total_cost", "sum")).reset_index()
+        st.dataframe(hire_site, use_container_width=True, hide_index=True)
+
+    if df.empty and hire_df.empty:
+        st.info("Add entries or equipment hires to see profit report")
 
 # ── PENDING APPROVALS (admin only) ─────────────────────────
 elif selection and selection.startswith("⏳ Pending"):
